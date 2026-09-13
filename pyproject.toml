@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "phishscan"
+version = "0.2.0"
+description = "Analisis URL untuk mendeteksi phishing — tanpa API key."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [{ name = "spidercyber12" }]
+keywords = ["phishing", "security", "url", "scanner", "cybersecurity"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Security",
+]
+
+[project.optional-dependencies]
+full = ["dnspython>=2.4.0", "cryptography>=41.0.0"]
+
+[project.scripts]
+phishscan = "phishscan:main"
+
+[tool.setuptools]
+py-modules = ["phishscan", "pipeline", "deps"]
+
+[tool.setuptools.packages.find]
+include = ["analyzers*", "scoring*"]

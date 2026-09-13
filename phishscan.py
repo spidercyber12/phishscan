@@ -16,7 +16,7 @@ if _THIS not in sys.path:
     sys.path.insert(0, _THIS)
 
 
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 
 
 class C:
