@@ -1,0 +1,6 @@
+# PhishScan — dependency opsional
+# Tool ini berjalan TANPA dependency ini (stdlib only).
+# Install kalau ingin fitur lebih akurat.
+
+dnspython>=2.4.0      # cek MX & NS record
+cryptography>=41.0.0  # parsing sertifikat TLS
