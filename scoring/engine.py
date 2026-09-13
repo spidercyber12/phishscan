@@ -32,6 +32,7 @@ CAP_PER_CODE = {
     "CERT_EXPIRING":      15,
     "FETCH_ERROR":        10,
     "HTML_FETCH_FAIL":    5,
+    "DOMAIN_RECENT":      15,
 }
 
 COMBINATION_BONUS = [
@@ -41,6 +42,9 @@ COMBINATION_BONUS = [
     ({"SUSPICIOUS_TLD", "TYPOSQUAT"},         10, "TLD murah + typosquat"),
     ({"PASSWORD_FORM_OTHER_HOST", "SUSPICIOUS_TLD"}, 15, "form password bocor + TLD murah"),
     ({"CERT_EXPIRED", "TYPOSQUAT"},           10, "sert kadaluarsa + typosquat"),
+    ({"DOMAIN_NEW", "TYPOSQUAT"},             15, "domain baru + typosquat"),
+    ({"DOMAIN_VERY_NEW", "TYPOSQUAT"},        20, "domain sangat baru + typosquat"),
+    ({"FAVICON_MISMATCH", "SUSPICIOUS_KEYWORD"}, 15, "favicon brand dipalsukan + kata kunci login"),
 ]
 
 

@@ -28,6 +28,8 @@ from analyzers.dns_lookup      import analyze as dns_analyze,   indicators as dn
 from analyzers.ssl_inspector   import analyze as ssl_analyze,   indicators as ssl_ind
 from analyzers.redirect_tracer import analyze as redirect_analyze, indicators as redir_ind
 from analyzers.html_scanner    import analyze as html_analyze,  indicators as html_ind
+from analyzers.whois_lookup    import analyze as whois_analyze, indicators as whois_ind
+from analyzers.favicon_hash    import analyze as favicon_analyze, indicators as favicon_ind
 from scoring.engine            import score_indicators
 
 
@@ -52,7 +54,7 @@ def run(url: str, verbose: bool = False) -> dict:
     steps = {}
 
     # --- 1. parse URL ---
-    log("[1/6] parse URL ...")
+    log("[1/8] parse URL ...")
     parsed, err, ms = _timed(parse_url, url)
     steps["url_parser"] = {"ms": ms, "error": err, "data": parsed}
     if err or not parsed:
@@ -61,7 +63,7 @@ def run(url: str, verbose: bool = False) -> dict:
     host = parsed["host"]
 
     # --- 2. heuristics ---
-    log("[2/6] heuristics ...")
+    log("[2/8] heuristics ...")
     heur, err, ms = _timed(run_heuristics, parsed)
     steps["heuristics"] = {"ms": ms, "error": err, "data": heur}
     indicators = list(heur["indicators"]) if heur else []
@@ -73,8 +75,18 @@ def run(url: str, verbose: bool = False) -> dict:
     if dns:
         indicators += dns_ind(dns)
 
-    # --- 4. SSL ---
-    log(f"[4/6] SSL inspect {host} ...")
+    # --- 4. WHOIS ---
+    log(f"[4/8] WHOIS lookup {parsed['registered_domain']} ...")
+    if parsed["registered_domain"] and not parsed["flags"]["is_ip"]:
+        whois_res, err, ms = _timed(whois_analyze, parsed["registered_domain"])
+        steps["whois"] = {"ms": ms, "error": err, "data": whois_res}
+        if whois_res:
+            indicators += whois_ind(whois_res)
+    else:
+        steps["whois"] = {"ms": 0, "error": None, "data": None, "skipped": "IP langsung"}
+
+    # --- 5. SSL ---
+    log(f"[5/8] SSL inspect {host} ...")
     if parsed["scheme"] == "https" or not parsed["flags"]["is_ip"]:
         ssl_res, err, ms = _timed(ssl_analyze, host)
         steps["ssl"] = {"ms": ms, "error": err, "data": ssl_res}
@@ -84,14 +96,14 @@ def run(url: str, verbose: bool = False) -> dict:
         steps["ssl"] = {"ms": 0, "error": None, "data": None, "skipped": "bukan https"}
 
     # --- 5. redirect + SSRF ---
-    log("[5/6] redirect trace ...")
+    log("[6/8] redirect trace ...")
     redir, err, ms = _timed(redirect_analyze, url)
     steps["redirect"] = {"ms": ms, "error": err, "data": redir}
     if redir:
         indicators += redir_ind(redir)
 
     # --- 6. HTML scan ---
-    log("[6/6] HTML scan ...")
+    log("[7/8] HTML scan ...")
     target_url = redir.get("final_url") if redir else url
     if redir and redir.get("blocked"):
         steps["html"] = {"ms": 0, "error": None, "data": None, "skipped": "SSRF blocked"}
@@ -100,6 +112,16 @@ def run(url: str, verbose: bool = False) -> dict:
         steps["html"] = {"ms": ms, "error": err, "data": html}
         if html:
             indicators += html_ind(html)
+
+    # --- 8. Favicon hash ---
+    log("[8/8] favicon hash ...")
+    if redir and redir.get("blocked"):
+        steps["favicon"] = {"ms": 0, "error": None, "data": None, "skipped": "SSRF blocked"}
+    else:
+        fav, err, ms = _timed(favicon_analyze, target_url)
+        steps["favicon"] = {"ms": ms, "error": err, "data": fav}
+        if fav:
+            indicators += favicon_ind(fav)
 
     return _finalize(url, steps, indicators, None)
 
