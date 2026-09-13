@@ -4,14 +4,7 @@ PhishScan CLI — analisis URL mencurigakan.
 
 Pemakaian:
     python phishscan.py <url>
-    python phishscan.py --json <url>
-    python phishscan.py --verbose <url>
-    python phishscan.py --no-color <url>
-
-Env:
-    NO_COLOR=1                → matikan warna
-    PHISHSCAN_YES=1           → auto-install dependency opsional
-    PHISHSCAN_ALLOW_PRIVATE=1 → izinkan scan IP privat (hati-hati!)
+    python phishscan.py --help
 """
 import os
 import sys
@@ -23,7 +16,9 @@ if _THIS not in sys.path:
     sys.path.insert(0, _THIS)
 
 
-# ---------- warna ----------
+VERSION = "0.1.0"
+
+
 class C:
     RESET  = "\033[0m"
     BOLD   = "\033[1m"
@@ -36,7 +31,7 @@ class C:
     CYAN   = "\033[36m"
 
 
-def _supports_color(stream) -> bool:
+def _supports_color(stream):
     if os.environ.get("NO_COLOR"):
         return False
     if os.environ.get("FORCE_COLOR"):
@@ -56,24 +51,22 @@ def color(s, *codes):
     return "".join(codes) + s + C.RESET
 
 
-def strip_ansi(s: str) -> str:
+def strip_ansi(s):
     import re
     return re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", s)
 
 
-# ---------- tampilan ----------
-
 VERDICT_STYLE = {
-    "safe":            (C.GREEN,  "✔ AMAN"),
-    "suspicious":      (C.YELLOW, "⚠ MENCURIGAKAN"),
-    "likely_phishing": (C.MAGENTA,"✘ KEMUNGKINAN BESAR PHISHING"),
-    "dangerous":       (C.RED,    "☠ BERBAHAYA"),
+    "safe":            (C.GREEN,  "\u2714 AMAN"),
+    "suspicious":      (C.YELLOW, "\u26a0 MENCURIGAKAN"),
+    "likely_phishing": (C.MAGENTA,"\u2718 KEMUNGKINAN BESAR PHISHING"),
+    "dangerous":       (C.RED,    "\u2620 BERBAHAYA"),
 }
 
 BOX_WIDTH = 60
 
 
-def _bar(score: int, width: int = 30) -> str:
+def _bar(score, width=30):
     filled = int(round(score / 100 * width))
     empty = width - filled
     if score >= 75:
@@ -84,30 +77,23 @@ def _bar(score: int, width: int = 30) -> str:
         col = C.YELLOW
     else:
         col = C.GREEN
-    return color("█" * filled, col) + color("░" * empty, C.DIM)
+    return color("\u2588" * filled, col) + color("\u2591" * empty, C.DIM)
 
 
-def _sev_color(sev: int) -> str:
+def _sev_color(sev):
     if sev >= 40: return C.RED
     if sev >= 25: return C.MAGENTA
     if sev >= 15: return C.YELLOW
     return C.CYAN
 
 
-def _box_line(text: str, width: int = BOX_WIDTH) -> str:
-    """
-    Bikin baris kotak: │ text padding │
-    `text` dihitung tanpa ANSI escape untuk padding.
-    """
+def _box_line(text, width=BOX_WIDTH):
     vis_len = len(strip_ansi(text))
-    # border total = 1 + width + 1
-    # baris        = 2 + vis_len + pad + 2
-    # supaya sejajar: pad = width - vis_len - 2
     pad = max(width - vis_len - 2, 0)
-    return color("│ ", C.DIM) + text + " " * pad + color(" │", C.DIM)
+    return color("\u2502 ", C.DIM) + text + " " * pad + color(" \u2502", C.DIM)
 
 
-def print_report(result: dict, verbose: bool = False):
+def print_report(result, verbose=False):
     url      = result["url"]
     score    = result["score"]
     verdict  = result["verdict"]
@@ -117,57 +103,52 @@ def print_report(result: dict, verbose: bool = False):
 
     col, label = VERDICT_STYLE.get(verdict, (C.RESET, verdict.upper()))
 
-    # header
     print()
-    print(color("┌" + "─" * BOX_WIDTH + "┐", C.DIM))
+    print(color("\u250c" + "\u2500" * BOX_WIDTH + "\u2510", C.DIM))
     print(_box_line(color("PhishScan", C.BOLD, C.CYAN) +
-                    color(" — analisis URL mencurigakan", C.DIM)))
-    print(color("└" + "─" * BOX_WIDTH + "┘", C.DIM))
+                    color(" \u2014 analisis URL mencurigakan", C.DIM)))
+    print(color("\u2514" + "\u2500" * BOX_WIDTH + "\u2518", C.DIM))
     print()
 
-    print(f"  URL      : {color(url, C.BOLD)}")
-    print(f"  Skor     : {color(str(score).rjust(3), col, C.BOLD)}/100  {_bar(score)}")
-    print(f"  Verdict  : {color(label, col, C.BOLD)}")
+    print("  URL      : " + color(url, C.BOLD))
+    print("  Skor     : " + color(str(score).rjust(3), col, C.BOLD) + "/100  " + _bar(score))
+    print("  Verdict  : " + color(label, col, C.BOLD))
     print()
 
-    # indikator
     if not inds:
         print("  " + color("Tidak ada indikator mencurigakan.", C.GREEN))
     else:
-        print(f"  {color('Indikator', C.BOLD)} ({len(inds)}):")
+        print("  " + color("Indikator", C.BOLD) + " (" + str(len(inds)) + "):")
         for i in inds:
             sev = i["severity"]
             col_sev = _sev_color(sev)
-            tag = color(f"[{sev:>3}]", col_sev, C.BOLD)
+            tag = color("[" + str(sev).rjust(3) + "]", col_sev, C.BOLD)
             code = color(i["code"], C.DIM)
-            print(f"    {tag} {i['label']}  {code}")
+            print("    " + tag + " " + i["label"] + "  " + code)
             if i.get("detail"):
-                print(f"           {color(i['detail'], C.DIM)}")
+                print("           " + color(i["detail"], C.DIM))
     print()
 
-    # bonus — notes sudah mengandung '+'
     if notes:
-        print(f"  {color('Bonus kombinasi:', C.BOLD)}")
+        print("  " + color("Bonus kombinasi:", C.BOLD))
         for n in notes:
-            print(f"    {color(n, C.YELLOW)}")
+            print("    " + color(n, C.YELLOW))
         print()
 
-    # verbose: timing
     if verbose and steps:
-        print(f"  {color('Timing:', C.BOLD)}")
+        print("  " + color("Timing:", C.BOLD))
         for name, s in steps.items():
             ms = s.get("ms", 0)
             err = s.get("error")
             skip = s.get("skipped")
             status = color("ok", C.GREEN)
             if err:
-                status = color(f"err: {err}", C.RED)
+                status = color("err: " + str(err), C.RED)
             elif skip:
-                status = color(f"skip: {skip}", C.DIM)
-            print(f"    {name:<12} {ms:>8.1f} ms   {status}")
+                status = color("skip: " + str(skip), C.DIM)
+            print("    " + name.ljust(12) + " " + str(round(ms, 1)).rjust(8) + " ms   " + status)
         print()
 
-    # kesimpulan
     if verdict == "safe":
         print("  " + color("Tidak ditemukan indikator phishing.", C.GREEN))
     elif verdict == "suspicious":
@@ -180,27 +161,117 @@ def print_report(result: dict, verbose: bool = False):
     print()
 
 
-# ---------- main ----------
+def _build_epilog():
+    SEP = "\u2500" * 65
+    lines = [
+        SEP,
+        "CONTOH PEMAKAIAN",
+        SEP,
+        "",
+        "  Analisis satu URL:",
+        '      python phishscan.py "http://suspicious-site.tk/login"',
+        "",
+        "  Tampilkan timing per modul (untuk debug/performa):",
+        '      python phishscan.py --verbose "https://example.com"',
+        "",
+        "  Output JSON (untuk otomasi / dipipe ke tool lain):",
+        '      python phishscan.py --json "https://example.com"',
+        "",
+        "  Matikan warna (cocok untuk log atau pipe):",
+        '      python phishscan.py --no-color "https://example.com"',
+        "",
+        "  Auto-install dependency opsional tanpa prompt:",
+        '      PHISHSCAN_YES=1 python phishscan.py "https://example.com"',
+        "",
+        "  Izinkan scan IP privat (hati-hati, bisa bahaya):",
+        '      PHISHSCAN_ALLOW_PRIVATE=1 python phishscan.py "http://192.168.1.1"',
+        "",
+        SEP,
+        "SKOR & VERDICT",
+        SEP,
+        "",
+        "  0-19    AMAN                        tidak ada indikator",
+        "  20-49   MENCURIGAKAN                ada beberapa tanda",
+        "  50-74   KEMUNGKINAN BESAR PHISHING  jangan masukkan data",
+        "  75-100  BERBAHAYA                   jangan buka sama sekali",
+        "",
+        SEP,
+        "ENVIRONMENT VARIABLE",
+        SEP,
+        "",
+        "  NO_COLOR=1                Matikan warna output",
+        "  PHISHSCAN_YES=1           Auto-install dependency opsional",
+        "  PHISHSCAN_ALLOW_PRIVATE=1 Izinkan scan IP privat (berisiko!)",
+        "",
+        SEP,
+        "LINK",
+        SEP,
+        "",
+        "  Repo    : https://github.com/spidercyber12/phishscan",
+        "  Issues  : https://github.com/spidercyber12/phishscan/issues",
+        "  Lisensi : MIT",
+    ]
+    return "\n".join(lines)
 
-def main():
-    ap = argparse.ArgumentParser(
+
+def _build_parser():
+    parser = argparse.ArgumentParser(
         prog="phishscan",
-        description="Analisis URL untuk deteksi phishing.",
+        description=(
+            "PhishScan \u2014 analisis URL untuk mendeteksi phishing.\n"
+            "Tool ini memeriksa struktur URL, DNS, sertifikat TLS, rantai redirect,\n"
+            "dan konten HTML. Tidak butuh API key. Berjalan dengan stdlib Python."
+        ),
+        epilog=_build_epilog(),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    ap.add_argument("url", help="URL yang akan diperiksa")
-    ap.add_argument("--json",   action="store_true", help="output JSON mentah")
-    ap.add_argument("--verbose", "-v", action="store_true", help="tampilkan timing per langkah")
-    ap.add_argument("--no-color", action="store_true", help="matikan warna")
-    args = ap.parse_args()
+    parser.add_argument(
+        "url",
+        nargs="?",
+        help="URL yang akan diperiksa. Boleh dengan atau tanpa skema.",
+    )
+    parser.add_argument(
+        "--json", action="store_true",
+        help="Output JSON mentah (tanpa warna) \u2014 cocok untuk script.",
+    )
+    parser.add_argument(
+        "-v", "--verbose", action="store_true",
+        help="Tampilkan timing setiap modul (parse, DNS, SSL, redirect, HTML).",
+    )
+    parser.add_argument(
+        "--no-color", action="store_true",
+        help="Matikan warna ANSI. Sama seperti set env NO_COLOR=1.",
+    )
+    parser.add_argument(
+        "-V", "--version", action="version",
+        version="PhishScan " + VERSION,
+        help="Tampilkan versi dan keluar.",
+    )
+    return parser
+
+
+def main(argv=None):
+    global USE_COLOR
+    parser = _build_parser()
+    args = parser.parse_args(argv)
 
     if args.no_color:
-        global USE_COLOR
         USE_COLOR = False
+
+    if not args.url:
+        print(color("\n  Tidak ada URL yang diberikan.\n", C.YELLOW))
+        print(color("  Coba jalankan salah satu contoh ini:\n", C.DIM))
+        print('    python phishscan.py "https://example.com"')
+        print('    python phishscan.py "http://suspicious-site.tk/login"')
+        print("    python phishscan.py --help")
+        print()
+        parser.print_help()
+        sys.exit(0)
 
     try:
         from pipeline import run
     except ImportError as e:
-        print(f"Error: tidak bisa import pipeline ({e})", file=sys.stderr)
+        print("Error: tidak bisa import pipeline (" + str(e) + ")", file=sys.stderr)
         print("Jalankan dari direktori project PhishScan.", file=sys.stderr)
         sys.exit(2)
 
