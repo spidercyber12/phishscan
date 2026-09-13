@@ -2,6 +2,7 @@
 
 **Analisis URL untuk mendeteksi phishing — tanpa API key, tanpa setup ribet.**
 
+[![Test](https://github.com/spidercyber12/phishscan/actions/workflows/test.yml/badge.svg)](https://github.com/spidercyber12/phishscan/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 
